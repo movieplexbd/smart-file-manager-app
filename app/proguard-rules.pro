@@ -1,0 +1,3 @@
+-keep public class * extends android.app.Activity
+-keep public class * extends android.app.Fragment
+-keepattributes *Annotation*
