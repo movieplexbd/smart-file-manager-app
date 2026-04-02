@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="6dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="2dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingTop="16dp"
+            android:paddingBottom="14dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <FrameLayout
+                android:id="@+id/icon_container"
+                android:layout_width="56dp"
+                android:layout_height="56dp">
+
+                <ImageView
+                    android:id="@+id/iv_file_icon"
+                    android:layout_width="34dp"
+                    android:layout_height="34dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="File icon" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tv_file_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textColor="@color/text_primary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp" />
+
+            <TextView
+                android:id="@+id/tv_file_info"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/selection_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/selection_overlay"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/iv_check"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="6dp"
+            android:src="@drawable/ic_check_circle"
+            android:contentDescription="Selected"
+            android:visibility="gone" />
+    </FrameLayout>
+</androidx.cardview.widget.CardView>

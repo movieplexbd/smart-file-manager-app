@@ -1,6 +1,7 @@
 package com.smart.filemanager.logic;
 
 import android.app.Application;
+
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
@@ -8,6 +9,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.smart.filemanager.filehandling.FileItem;
 import com.smart.filemanager.filehandling.FileManager;
+import com.smart.filemanager.filehandling.ZipManager;
 
 import java.io.File;
 import java.util.ArrayDeque;
@@ -29,10 +31,13 @@ public class FileViewModel extends AndroidViewModel {
     private final MutableLiveData<List<FileItem>> recentFiles = new MutableLiveData<>();
     private final MutableLiveData<List<FileItem>> favoriteFiles = new MutableLiveData<>();
     private final MutableLiveData<long[]> storageStats = new MutableLiveData<>();
+    private final MutableLiveData<List<FileItem>> categoryFiles = new MutableLiveData<>();
+    private final MutableLiveData<String> successMessage = new MutableLiveData<>();
 
     private final Deque<File> backStack = new ArrayDeque<>();
     private boolean showHidden = false;
     private FileManager.SortOrder sortOrder = FileManager.SortOrder.NAME;
+    private boolean sortDescending = false;
 
     public FileViewModel(@NonNull Application application) {
         super(application);
@@ -47,6 +52,8 @@ public class FileViewModel extends AndroidViewModel {
     public LiveData<List<FileItem>> getRecentFiles() { return recentFiles; }
     public LiveData<List<FileItem>> getFavoriteFiles() { return favoriteFiles; }
     public LiveData<long[]> getStorageStats() { return storageStats; }
+    public LiveData<List<FileItem>> getCategoryFiles() { return categoryFiles; }
+    public LiveData<String> getSuccessMessage() { return successMessage; }
 
     public void loadRoot() {
         navigateTo(fileManager.getRootDirectory());
@@ -72,7 +79,7 @@ public class FileViewModel extends AndroidViewModel {
     private void loadFiles(File directory) {
         isLoading.setValue(true);
         executor.execute(() -> {
-            List<FileItem> items = fileManager.listFiles(directory, showHidden, sortOrder);
+            List<FileItem> items = fileManager.listFiles(directory, showHidden, sortOrder, sortDescending);
             fileList.postValue(items);
             isLoading.postValue(false);
         });
@@ -85,6 +92,59 @@ public class FileViewModel extends AndroidViewModel {
             List<FileItem> results = fileManager.searchFiles(root, query, showHidden);
             searchResults.postValue(results);
             isLoading.postValue(false);
+        });
+    }
+
+    public void loadByCategory(FileItem.FileType type) {
+        File root = fileManager.getRootDirectory();
+        isLoading.setValue(true);
+        executor.execute(() -> {
+            List<FileItem> results = fileManager.getFilesByCategory(root, type);
+            categoryFiles.postValue(results);
+            isLoading.postValue(false);
+        });
+    }
+
+    public void createFolder(String name) {
+        File dir = currentDirectory.getValue();
+        if (dir == null) return;
+        executor.execute(() -> {
+            boolean ok = fileManager.createFolder(dir, name);
+            if (ok) {
+                reload();
+                successMessage.postValue("Folder \"" + name + "\" created");
+            } else {
+                errorMessage.postValue("Could not create folder");
+            }
+        });
+    }
+
+    public void compressFile(FileItem item) {
+        executor.execute(() -> {
+            File source = item.getFile();
+            File dest = new File(source.getParent(), source.getName() + ".zip");
+            try {
+                ZipManager.compress(source, dest);
+                reload();
+                successMessage.postValue("Compressed: " + dest.getName());
+            } catch (Exception e) {
+                errorMessage.postValue("Compression failed: " + e.getMessage());
+            }
+        });
+    }
+
+    public void extractZip(FileItem item) {
+        executor.execute(() -> {
+            File zip = item.getFile();
+            String baseName = zip.getName().toLowerCase().replace(".zip", "");
+            File destDir = new File(zip.getParent(), baseName + "_extracted");
+            try {
+                ZipManager.extract(zip, destDir);
+                reload();
+                successMessage.postValue("Extracted to: " + destDir.getName());
+            } catch (Exception e) {
+                errorMessage.postValue("Extraction failed: " + e.getMessage());
+            }
         });
     }
 
@@ -152,7 +212,13 @@ public class FileViewModel extends AndroidViewModel {
         reload();
     }
 
+    public void setSortDescending(boolean descending) {
+        this.sortDescending = descending;
+        reload();
+    }
+
     public boolean isShowHidden() { return showHidden; }
+    public boolean isSortDescending() { return sortDescending; }
 
     private void reload() {
         File dir = currentDirectory.getValue();

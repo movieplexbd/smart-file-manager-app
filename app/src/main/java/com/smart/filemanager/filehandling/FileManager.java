@@ -10,8 +10,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,7 +23,7 @@ public class FileManager {
 
     private final SharedPreferences prefs;
 
-    public enum SortOrder { NAME, SIZE, DATE }
+    public enum SortOrder { NAME, SIZE, DATE, TYPE }
 
     public FileManager(Context context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -36,6 +34,10 @@ public class FileManager {
     }
 
     public List<FileItem> listFiles(File directory, boolean showHidden, SortOrder sortOrder) {
+        return listFiles(directory, showHidden, sortOrder, false);
+    }
+
+    public List<FileItem> listFiles(File directory, boolean showHidden, SortOrder sortOrder, boolean descending) {
         List<FileItem> items = new ArrayList<>();
         if (directory == null || !directory.exists() || !directory.isDirectory()) return items;
 
@@ -50,19 +52,30 @@ public class FileManager {
             items.add(item);
         }
 
-        sort(items, sortOrder);
+        sort(items, sortOrder, descending);
         return items;
     }
 
-    private void sort(List<FileItem> items, SortOrder order) {
+    private void sort(List<FileItem> items, SortOrder order, boolean descending) {
         items.sort((a, b) -> {
-            if (a.isDirectory() && !b.isDirectory()) return -1;
-            if (!a.isDirectory() && b.isDirectory()) return 1;
+            if (a.isDirectory() && !b.isDirectory()) return descending ? 1 : -1;
+            if (!a.isDirectory() && b.isDirectory()) return descending ? -1 : 1;
+            int cmp;
             switch (order) {
-                case SIZE: return Long.compare(a.getSize(), b.getSize());
-                case DATE: return Long.compare(b.getLastModified(), a.getLastModified());
-                default: return a.getName().compareToIgnoreCase(b.getName());
+                case SIZE:
+                    cmp = Long.compare(a.getSize(), b.getSize());
+                    break;
+                case DATE:
+                    cmp = Long.compare(b.getLastModified(), a.getLastModified());
+                    break;
+                case TYPE:
+                    cmp = a.getFileType().name().compareTo(b.getFileType().name());
+                    break;
+                default:
+                    cmp = a.getName().compareToIgnoreCase(b.getName());
+                    break;
             }
+            return descending ? -cmp : cmp;
         });
     }
 
@@ -74,6 +87,7 @@ public class FileManager {
     }
 
     private void searchRecursive(File dir, String query, List<FileItem> results, boolean showHidden) {
+        if (results.size() >= 200) return;
         File[] files = dir.listFiles();
         if (files == null) return;
         for (File file : files) {
@@ -85,6 +99,35 @@ public class FileManager {
                 searchRecursive(file, query, results, showHidden);
             }
         }
+    }
+
+    public List<FileItem> getFilesByCategory(File root, FileItem.FileType type) {
+        List<FileItem> results = new ArrayList<>();
+        if (root == null) return results;
+        searchByType(root, type, results);
+        return results;
+    }
+
+    private void searchByType(File dir, FileItem.FileType type, List<FileItem> results) {
+        if (results.size() >= 500) return;
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            if (file.isHidden() || file.getName().startsWith(".")) continue;
+            if (!file.isDirectory()) {
+                FileItem item = new FileItem(file);
+                if (item.getFileType() == type) {
+                    results.add(item);
+                }
+            } else {
+                searchByType(file, type, results);
+            }
+        }
+    }
+
+    public boolean createFolder(File parent, String name) {
+        File newDir = new File(parent, name);
+        return newDir.mkdirs();
     }
 
     public boolean deleteFile(File file) {
